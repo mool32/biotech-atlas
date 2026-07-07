@@ -1,0 +1,6 @@
+# The proof pipeline uses only the Python 3 standard library (sqlite3, urllib).
+# Nothing to install to run ingest + queries.
+#
+# Later stages add:
+# psycopg[binary]>=3.1      # Postgres/Supabase driver (product engine)
+# duckdb>=1.0               # analytical engine for landscape queries (optional)

@@ -1,0 +1,10 @@
+# local db + raw snapshots + generated views (regenerable from the pipeline)
+data/*.sqlite
+data/*.sqlite-*
+data/raw/
+landscape.html
+# python
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
