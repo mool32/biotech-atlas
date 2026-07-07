@@ -50,13 +50,15 @@ def main():
     n_prop = q(conn, "SELECT count(*) FROM asset WHERE role='proprietary'")[0][0]
     n_ind = q(conn, "SELECT count(DISTINCT canonical) FROM indication")[0][0]
     n_tgt = q(conn, "SELECT count(*) FROM target")[0][0]
+    n_dis = q(conn, "SELECT count(DISTINCT mondo_id) FROM indication WHERE mondo_id IS NOT NULL")[0][0]
 
     orgs = q(conn, """SELECT COALESCE(p.name,c.name), SUM(c.trials_total)
         FROM company c LEFT JOIN company p ON c.parent_id=p.id
         GROUP BY COALESCE(p.name,c.name) ORDER BY 2 DESC LIMIT 12;""")
-    inds = q(conn, """SELECT i.canonical, count(DISTINCT e.src_id)
-        FROM indication i JOIN edge e ON e.dst_type='indication' AND e.dst_id=i.id AND e.rel='for'
-        GROUP BY i.canonical ORDER BY 2 DESC LIMIT 12;""")
+    inds = q(conn, """SELECT d.label, count(DISTINCT e.src_id)
+        FROM indication i JOIN disease d ON d.mondo_id=i.mondo_id
+        JOIN edge e ON e.dst_type='indication' AND e.dst_id=i.id AND e.rel='for'
+        GROUP BY d.mondo_id ORDER BY 2 DESC LIMIT 12;""")
     progs = q(conn, """SELECT a.name, count(DISTINCT e.dst_id)
         FROM asset a JOIN edge e ON e.src_type='asset' AND e.src_id=a.id AND e.rel='tested_in'
         WHERE a.role='proprietary' GROUP BY a.id ORDER BY 2 DESC LIMIT 12;""")
@@ -65,11 +67,18 @@ def main():
     tgts = q(conn, """SELECT t.name, count(DISTINCT e.src_id)
         FROM target t JOIN edge e ON e.dst_type='target' AND e.dst_id=t.id AND e.rel='targets'
         GROUP BY t.id ORDER BY 2 DESC LIMIT 12;""")
+    rollup = q(conn, """SELECT anc.label, count(DISTINCT e.src_id)
+        FROM disease anc
+        JOIN edge se ON se.dst_type='disease' AND se.dst_id=anc.id AND se.rel='subtype_of'
+        JOIN disease d ON d.id=se.src_id
+        JOIN indication i ON i.mondo_id=d.mondo_id
+        JOIN edge e ON e.dst_type='indication' AND e.dst_id=i.id AND e.rel='for'
+        GROUP BY anc.id ORDER BY 2 DESC LIMIT 10;""")
 
     tiles = "".join(
         f'<div class="tile"><div class="num">{n}</div><div class="cap">{c}</div></div>'
         for n, c in [(n_comp, "companies"), (n_trial, "trials"),
-                     (n_prop, "proprietary assets"), (n_ind, "indications"),
+                     (n_prop, "proprietary assets"), (n_dis, "MONDO diseases"),
                      (n_tgt, "targets")]
     )
     body = (
@@ -79,7 +88,8 @@ def main():
         f'<div class="tiles">{tiles}</div></header>'
         f'<div class="grid">'
         + panel("Companies by oncology trials", "parent-rolled-up, authoritative total", orgs, ACCENTS["blue"])
-        + panel("Most-studied indications", "canonicalized labels", inds, ACCENTS["teal"])
+        + panel("Most-studied diseases", "MONDO-mapped", inds, ACCENTS["teal"])
+        + panel("Disease groups", "MONDO rollup via hierarchy", rollup, ACCENTS["teal"])
         + panel("Top proprietary programs", "comparators & placebo excluded", progs, ACCENTS["amber"])
         + panel("Top targets", "by proprietary assets · Open Targets", tgts, ACCENTS["green"])
         + panel("Trial landscape by phase", "all sampled trials", phases, ACCENTS["purple"])

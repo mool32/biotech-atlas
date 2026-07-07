@@ -36,9 +36,27 @@ def connect(db_path: str) -> sqlite3.Connection:
     return conn
 
 
+# Additive columns introduced after a table's original CREATE. Applied on every
+# init so an existing db picks up new columns without a rebuild (CREATE TABLE
+# IF NOT EXISTS won't alter an existing table).
+_MIGRATIONS = [
+    ("company", "parent_name", "TEXT"),
+    ("company", "parent_id", "INTEGER"),
+    ("asset", "role", "TEXT"),
+    ("asset", "role_source", "TEXT"),
+    ("indication", "canonical", "TEXT"),
+    ("indication", "mondo_id", "TEXT"),
+    ("indication", "mondo_label", "TEXT"),
+]
+
+
 def init_schema(conn: sqlite3.Connection, schema_path: str) -> None:
     with open(schema_path, "r", encoding="utf-8") as f:
         conn.executescript(f.read())
+    for table, col, typ in _MIGRATIONS:
+        cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if col not in cols:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ};")
     conn.commit()
 
 

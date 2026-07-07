@@ -47,7 +47,8 @@ No installs needed (stdlib only):
 python3 src/ingest_clinicaltrials.py --max-per-company 300   # 1. ingest trials (all seeds)
 python3 src/resolve.py                                       # 2. resolve/clean
 python3 src/ingest_opentargets.py --limit 80                 # 3. attach targets + modality
-python3 src/build_landscape.py                               # 4. -> landscape.html
+python3 src/ingest_mondo.py --reset --limit 150              # 4. map indications to MONDO
+python3 src/build_landscape.py                               # 5. -> landscape.html
 python3 src/query_examples.py                                # (optional) console views
 ```
 
@@ -70,6 +71,7 @@ src/db.py                      thin DB layer + entity normalization
 src/ingest_clinicaltrials.py   stage 1 — ingest the oncology vertical
 src/resolve.py                 stage 2 — asset role, indication canon, parent roll-up
 src/ingest_opentargets.py      stage 2b — targets + real modality (Open Targets)
+src/ingest_mondo.py            stage 2c — map indications to MONDO + hierarchy
 src/build_landscape.py         stage 3 — generate landscape.html from the graph
 src/query_examples.py          read-only analytical queries
 data/seeds/                    curated seed lists (committed)
@@ -89,9 +91,12 @@ METHODOLOGY.md                 definitions, source registry, provenance policy
 - Company parent roll-up is **seed-declared**, not discovered — only the
   subsidiaries listed in the seed (Genentech, Janssen, Seagen, Mirati, …) merge.
   Automatic M&A/alias resolution is Phase 2.
-- Asset role and indication canonical are **heuristics** (curated list / rule),
-  not ontology-backed — good enough to separate comparators and fold obvious
-  indication variants, pending ChEMBL and MONDO mapping.
-- Modality is a coarse `inferred` guess (mostly unresolved for small molecules).
+- Indications are MONDO-mapped for ~60% of trials (precision-first: exact
+  match only). Umbrella terms and stage-2 word-order/abbrev noise stay unmapped
+  and fall back to the heuristic `canonical` — improving recall is a later lever.
+- Asset role is still a curated **heuristic** (not ontology-backed) — good
+  enough to separate comparators/placebo, pending full ChEMBL/ATC classing.
+- Modality is sourced from Open Targets for resolved assets; the long tail of
+  proprietary assets is still unresolved.
 - Materialized graph samples up to 300 trials/company; org-level counts use the
   authoritative `totalCount`, so rankings are exact even where the sample caps.

@@ -38,11 +38,21 @@ def main():
         SELECT COALESCE(phase,'(unspecified)') AS phase, count(*) AS trials
         FROM trial GROUP BY phase ORDER BY trials DESC;""")
 
-    show(conn, "most-studied indications (canonicalized)", """
-        SELECT i.canonical, count(DISTINCT e.src_id) AS trials
+    show(conn, "most-studied diseases (MONDO-mapped)", """
+        SELECT d.label, count(DISTINCT e.src_id) AS trials
         FROM indication i
+        JOIN disease d ON d.mondo_id = i.mondo_id
         JOIN edge e ON e.dst_type='indication' AND e.dst_id=i.id AND e.rel='for'
-        GROUP BY i.canonical ORDER BY trials DESC LIMIT 10;""")
+        GROUP BY d.mondo_id ORDER BY trials DESC LIMIT 10;""")
+
+    show(conn, "MONDO rollup: trials under disease groups (via hierarchy)", """
+        SELECT anc.label, count(DISTINCT e.src_id) AS trials
+        FROM disease anc
+        JOIN edge se ON se.dst_type='disease' AND se.dst_id=anc.id AND se.rel='subtype_of'
+        JOIN disease d ON d.id = se.src_id
+        JOIN indication i ON i.mondo_id = d.mondo_id
+        JOIN edge e ON e.dst_type='indication' AND e.dst_id=i.id AND e.rel='for'
+        GROUP BY anc.id ORDER BY trials DESC LIMIT 12;""")
 
     show(conn, "asset roles (comparators/placebo separated out)", """
         SELECT COALESCE(role,'(unresolved)') AS role, count(*) AS assets

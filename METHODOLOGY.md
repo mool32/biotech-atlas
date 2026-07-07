@@ -24,9 +24,9 @@ parsing, so every loaded row can be traced back and re-derived.
 |---------------------|---------------------------------|----------|
 | ClinicalTrials.gov  | trials, sponsors, interventions | **live** |
 | Open Targets        | drug → target, drug type        | **live** |
+| MONDO (via EBI OLS4)| disease ontology + hierarchy    | **live** |
 | SEC EDGAR           | public companies, financials    | planned  |
 | ChEMBL / DrugBank   | drugs / compounds               | planned  |
-| MONDO / MeSH        | disease ontology                | planned  |
 | GLEIF (LEI)         | legal entity ids                | planned  |
 | Lens.org            | patents                         | planned  |
 
@@ -77,3 +77,8 @@ punctuation and corporate suffixes. Fuzzy alias/ticker matching is still Phase 2
 - 2026-07-07 — (Phase 2) targets layer via Open Targets: `asset --targets-->
   target` edges (fact, source Open Targets), real modality from `drugType`, and
   ChEMBL ids attached — for the top proprietary assets (bounded by --limit).
+- 2026-07-07 — (Phase 3) MONDO mapping via EBI OLS4: canonical labels resolved
+  to MONDO ids (precision-first — exact label/synonym match only, else left
+  unmapped), with `disease --subtype_of--> disease` hierarchy for rollup. ~60%
+  of trials covered; umbrella terms (cancer, solid tumor) and word-order/abbrev
+  noise from stage-2 canonicalization remain unmapped (a recall lever for later).

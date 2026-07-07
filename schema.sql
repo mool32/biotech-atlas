@@ -32,8 +32,17 @@ CREATE TABLE IF NOT EXISTS indication (
   id        INTEGER PRIMARY KEY,
   name      TEXT NOT NULL,
   name_norm TEXT NOT NULL UNIQUE,
-  canonical TEXT,                   -- rolled-up label (stage 2, pre-MONDO)
-  mondo_id  TEXT                    -- canonical id: MONDO/MeSH   (to be filled)
+  canonical   TEXT,                 -- rolled-up label (stage 2 heuristic)
+  mondo_id    TEXT,                 -- canonical id: MONDO (stage 3, OLS)
+  mondo_label TEXT                  -- mapped MONDO term label
+);
+
+-- MONDO disease terms + their hierarchy (edge rel='subtype_of' between diseases)
+CREATE TABLE IF NOT EXISTS disease (
+  id        INTEGER PRIMARY KEY,
+  mondo_id  TEXT NOT NULL UNIQUE,   -- canonical id: MONDO
+  label     TEXT,
+  name_norm TEXT
 );
 
 CREATE TABLE IF NOT EXISTS target (
