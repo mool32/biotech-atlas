@@ -19,6 +19,7 @@ import urllib.parse
 import urllib.request
 
 import db as dbm
+from resolve import disease_key
 
 OLS = "https://www.ebi.ac.uk/ols4/api"
 SOURCE = "MONDO (OLS)"
@@ -44,20 +45,20 @@ def get(url):
 
 
 def search_mondo(term):
-    """Precision-first: accept a MONDO term only if its label or a synonym
-    exactly equals the query (normalized). OLS ranking alone is unreliable, so we
-    verify rather than trust the top hit; no confident match -> None (skip)."""
+    """Precision-first, order- and spelling-independent: accept a MONDO term only
+    if its label or a synonym has the same token multiset as the query. OLS
+    ranking alone is unreliable, so we verify rather than trust the top hit."""
     url = f"{OLS}/search?" + urllib.parse.urlencode(
         {"q": term, "ontology": "mondo", "rows": 25,
          "fieldList": "iri,label,obo_id,synonym"})
     docs = [d for d in get(url).get("response", {}).get("docs", [])
             if (d.get("obo_id") or "").startswith("MONDO:")]
-    nq = dbm.normalize(term)
-    for d in docs:                                   # 1. exact label match
-        if dbm.normalize(d.get("label", "")) == nq:
+    key = disease_key(term)
+    for d in docs:                                   # 1. label token-set match
+        if disease_key(d.get("label", "")) == key:
             return d
-    for d in docs:                                   # 2. exact synonym match
-        if any(dbm.normalize(s) == nq for s in (d.get("synonym") or [])):
+    for d in docs:                                   # 2. synonym token-set match
+        if any(disease_key(s) == key for s in (d.get("synonym") or [])):
             return d
     return None
 

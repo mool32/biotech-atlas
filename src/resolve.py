@@ -39,12 +39,27 @@ QUALIFIERS = {
     "metastatic", "advanced", "locally", "recurrent", "refractory", "relapsed",
     "unresectable", "newly", "diagnosed", "early", "high", "low", "risk",
     "adult", "pediatric", "childhood", "primary", "secondary", "resistant",
-    "progressive", "stage", "i", "ii", "iii", "iv",
+    "progressive", "stage", "i", "ii", "iii", "iv", "or", "and",
+}
+
+# British -> American + possessive normalization, so labels match MONDO terms.
+SPELLING = {
+    "tumour": "tumor", "tumours": "tumors", "oesophageal": "esophageal",
+    "oesophagus": "esophagus", "leukaemia": "leukemia", "leukaemias": "leukemias",
+    "paediatric": "pediatric", "haematologic": "hematologic",
+    "haematological": "hematological", "haematopoietic": "hematopoietic",
+    "coeliac": "celiac", "oedema": "edema", "hodgkins": "hodgkin",
+    "metastases": "metastasis",
 }
 
 
 def tokens(s):
-    return [t for t in re.split(r"[^a-z0-9]+", (s or "").lower()) if t]
+    return [SPELLING.get(t, t) for t in re.split(r"[^a-z0-9]+", (s or "").lower()) if t]
+
+
+def disease_key(s):
+    """Order-independent, spelling-normalized token key for disease matching."""
+    return tuple(sorted(tokens(s)))
 
 
 def classify_asset(name):
@@ -57,6 +72,7 @@ def classify_asset(name):
 
 
 def canonical_indication(name):
+    name = re.sub(r"\([^)]*\)", " ", name or "")   # drop "(RCC)"-style abbreviations
     out = []
     for t in tokens(name):
         if t in QUALIFIERS:
