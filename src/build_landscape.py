@@ -12,7 +12,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.path.join(ROOT, "data", "biotech.sqlite")
 OUT = os.path.join(ROOT, "landscape.html")
 
-ACCENTS = {"blue": "#4f7cc9", "teal": "#3fa39a", "amber": "#d69a3c", "purple": "#7a6cc9"}
+ACCENTS = {"blue": "#4f7cc9", "teal": "#3fa39a", "amber": "#d69a3c",
+           "purple": "#7a6cc9", "green": "#5b9c5b"}
 
 
 def q(conn, sql):
@@ -48,6 +49,7 @@ def main():
     n_trial = q(conn, "SELECT count(*) FROM trial")[0][0]
     n_prop = q(conn, "SELECT count(*) FROM asset WHERE role='proprietary'")[0][0]
     n_ind = q(conn, "SELECT count(DISTINCT canonical) FROM indication")[0][0]
+    n_tgt = q(conn, "SELECT count(*) FROM target")[0][0]
 
     orgs = q(conn, """SELECT COALESCE(p.name,c.name), SUM(c.trials_total)
         FROM company c LEFT JOIN company p ON c.parent_id=p.id
@@ -60,11 +62,15 @@ def main():
         WHERE a.role='proprietary' GROUP BY a.id ORDER BY 2 DESC LIMIT 12;""")
     phases = q(conn, """SELECT COALESCE(phase,'(unspecified)'), count(*)
         FROM trial GROUP BY phase ORDER BY 2 DESC;""")
+    tgts = q(conn, """SELECT t.name, count(DISTINCT e.src_id)
+        FROM target t JOIN edge e ON e.dst_type='target' AND e.dst_id=t.id AND e.rel='targets'
+        GROUP BY t.id ORDER BY 2 DESC LIMIT 12;""")
 
     tiles = "".join(
         f'<div class="tile"><div class="num">{n}</div><div class="cap">{c}</div></div>'
         for n, c in [(n_comp, "companies"), (n_trial, "trials"),
-                     (n_prop, "proprietary assets"), (n_ind, "indications")]
+                     (n_prop, "proprietary assets"), (n_ind, "indications"),
+                     (n_tgt, "targets")]
     )
     body = (
         f'<header><h1>biotech-atlas — oncology landscape</h1>'
@@ -75,6 +81,7 @@ def main():
         + panel("Companies by oncology trials", "parent-rolled-up, authoritative total", orgs, ACCENTS["blue"])
         + panel("Most-studied indications", "canonicalized labels", inds, ACCENTS["teal"])
         + panel("Top proprietary programs", "comparators & placebo excluded", progs, ACCENTS["amber"])
+        + panel("Top targets", "by proprietary assets · Open Targets", tgts, ACCENTS["green"])
         + panel("Trial landscape by phase", "all sampled trials", phases, ACCENTS["purple"])
         + "</div>"
     )

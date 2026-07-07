@@ -63,6 +63,17 @@ def main():
         WHERE a.role IN ('standard_of_care','placebo')
         GROUP BY a.id ORDER BY trials DESC LIMIT 10;""")
 
+    show(conn, "top targets by # proprietary assets (Open Targets)", """
+        SELECT t.name, count(DISTINCT e.src_id) AS assets
+        FROM target t
+        JOIN edge e ON e.dst_type='target' AND e.dst_id=t.id AND e.rel='targets'
+        GROUP BY t.id ORDER BY assets DESC LIMIT 12;""")
+
+    show(conn, "asset modality (sourced from Open Targets drugType)", """
+        SELECT modality, count(*) AS assets
+        FROM asset WHERE modality_source='Open Targets'
+        GROUP BY modality ORDER BY assets DESC;""")
+
     show(conn, "provenance audit: fact vs inferred edges", """
         SELECT confidence, count(*) FROM edge GROUP BY confidence ORDER BY 2 DESC;""")
 

@@ -36,6 +36,14 @@ CREATE TABLE IF NOT EXISTS indication (
   mondo_id  TEXT                    -- canonical id: MONDO/MeSH   (to be filled)
 );
 
+CREATE TABLE IF NOT EXISTS target (
+  id         INTEGER PRIMARY KEY,
+  name       TEXT NOT NULL,         -- approved gene symbol (e.g. PDCD1)
+  name_norm  TEXT NOT NULL UNIQUE,
+  ensembl_id TEXT,                  -- canonical id: Ensembl gene (Open Targets)
+  uniprot_id TEXT                   -- canonical id: UniProt       (to be filled)
+);
+
 CREATE TABLE IF NOT EXISTS trial (
   id             INTEGER PRIMARY KEY,
   nct_id         TEXT NOT NULL UNIQUE,   -- canonical id: ClinicalTrials.gov

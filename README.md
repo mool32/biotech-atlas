@@ -44,9 +44,10 @@ seed companies ─▶ ingest (API) ─▶ land raw snapshot ─▶ resolve ─�
 No installs needed (stdlib only):
 
 ```bash
-python3 src/ingest_clinicaltrials.py --max-per-company 300   # 1. ingest (all seeds)
+python3 src/ingest_clinicaltrials.py --max-per-company 300   # 1. ingest trials (all seeds)
 python3 src/resolve.py                                       # 2. resolve/clean
-python3 src/build_landscape.py                               # 3. -> landscape.html
+python3 src/ingest_opentargets.py --limit 80                 # 3. attach targets + modality
+python3 src/build_landscape.py                               # 4. -> landscape.html
 python3 src/query_examples.py                                # (optional) console views
 ```
 
@@ -68,6 +69,7 @@ schema.sql                     portable DDL (entities + edges + provenance)
 src/db.py                      thin DB layer + entity normalization
 src/ingest_clinicaltrials.py   stage 1 — ingest the oncology vertical
 src/resolve.py                 stage 2 — asset role, indication canon, parent roll-up
+src/ingest_opentargets.py      stage 2b — targets + real modality (Open Targets)
 src/build_landscape.py         stage 3 — generate landscape.html from the graph
 src/query_examples.py          read-only analytical queries
 data/seeds/                    curated seed lists (committed)

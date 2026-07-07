@@ -23,8 +23,8 @@ parsing, so every loaded row can be traced back and re-derived.
 | source              | provides                        | status   |
 |---------------------|---------------------------------|----------|
 | ClinicalTrials.gov  | trials, sponsors, interventions | **live** |
+| Open Targets        | drug → target, drug type        | **live** |
 | SEC EDGAR           | public companies, financials    | planned  |
-| Open Targets        | target ↔ disease ↔ drug         | planned  |
 | ChEMBL / DrugBank   | drugs / compounds               | planned  |
 | MONDO / MeSH        | disease ontology                | planned  |
 | GLEIF (LEI)         | legal entity ids                | planned  |
@@ -74,3 +74,6 @@ punctuation and corporate suffixes. Fuzzy alias/ticker matching is still Phase 2
   (source `totalCount`) separate from the materialized trial sample.
 - 2026-07-07 — (B) stage-2 heuristics added: asset role, indication canonical,
   company parent roll-up (all logged, non-destructive).
+- 2026-07-07 — (Phase 2) targets layer via Open Targets: `asset --targets-->
+  target` edges (fact, source Open Targets), real modality from `drugType`, and
+  ChEMBL ids attached — for the top proprietary assets (bounded by --limit).
