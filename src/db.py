@@ -44,6 +44,7 @@ _MIGRATIONS = [
     ("company", "parent_id", "INTEGER"),
     ("asset", "role", "TEXT"),
     ("asset", "role_source", "TEXT"),
+    ("asset", "ot_checked", "TEXT"),
     ("indication", "canonical", "TEXT"),
     ("indication", "mondo_id", "TEXT"),
     ("indication", "mondo_label", "TEXT"),

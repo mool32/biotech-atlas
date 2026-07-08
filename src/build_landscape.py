@@ -66,6 +66,7 @@ def main():
         FROM trial GROUP BY phase ORDER BY 2 DESC;""")
     tgts = q(conn, """SELECT t.name, count(DISTINCT e.src_id)
         FROM target t JOIN edge e ON e.dst_type='target' AND e.dst_id=t.id AND e.rel='targets'
+        WHERE t.name NOT LIKE 'TUB%'          -- family-inflated, non-actionable cytoskeleton
         GROUP BY t.id ORDER BY 2 DESC LIMIT 12;""")
     rollup = q(conn, """SELECT anc.label, count(DISTINCT e.src_id)
         FROM disease anc

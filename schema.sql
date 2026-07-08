@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS asset (
   modality_source TEXT,             -- 'extracted' | 'inferred'
   role            TEXT,             -- proprietary | standard_of_care | placebo (stage 2)
   role_source     TEXT,             -- 'heuristic' | 'curated' | 'chembl'
-  chembl_id       TEXT              -- canonical id: ChEMBL       (to be filled)
+  chembl_id       TEXT,             -- canonical id: ChEMBL (Open Targets)
+  ot_checked      TEXT              -- date last queried in Open Targets (matched or not)
 );
 
 CREATE TABLE IF NOT EXISTS indication (

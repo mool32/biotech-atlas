@@ -46,7 +46,7 @@ No installs needed (stdlib only):
 ```bash
 python3 src/ingest_clinicaltrials.py --max-per-company 300   # 1. ingest trials (all seeds)
 python3 src/resolve.py                                       # 2. resolve/clean
-python3 src/ingest_opentargets.py --limit 80                 # 3. attach targets + modality
+python3 src/ingest_opentargets.py --min-trials 2 --limit 900 # 3. targets + modality (incremental)
 python3 src/ingest_mondo.py --reset --limit 150              # 4. map indications to MONDO
 python3 src/build_landscape.py                               # 5. -> landscape.html
 python3 src/query_examples.py                                # (optional) console views
@@ -96,7 +96,9 @@ METHODOLOGY.md                 definitions, source registry, provenance policy
   and fall back to the heuristic `canonical` — improving recall is a later lever.
 - Asset role is still a curated **heuristic** (not ontology-backed) — good
   enough to separate comparators/placebo, pending full ChEMBL/ATC classing.
-- Modality is sourced from Open Targets for resolved assets; the long tail of
-  proprietary assets is still unresolved.
+- Targets + modality are sourced from Open Targets for the 630 proprietary
+  assets in ≥2 trials (incremental via `ot_checked`; rerun `--min-trials 1` to
+  add the single-trial tail). The target leaderboard hides tubulin isoforms
+  (family-inflated); their edges still live in the graph.
 - Materialized graph samples up to 300 trials/company; org-level counts use the
   authoritative `totalCount`, so rankings are exact even where the sample caps.

@@ -15,6 +15,7 @@ import argparse
 import datetime
 import json
 import os
+import re
 import time
 import urllib.request
 
@@ -42,10 +43,11 @@ def gql(query, variables):
 
 
 def resolve_chembl(name):
-    hits = (gql(SEARCH_Q, {"q": name}).get("data", {}).get("search", {}) or {}).get("hits", []) or []
+    clean = re.sub(r"\([^)]*\)", " ", name).strip()   # drop "(Nexavar, BAY43-9006)" noise
+    hits = (gql(SEARCH_Q, {"q": clean}).get("data", {}).get("search", {}) or {}).get("hits", []) or []
     drug_hits = [h for h in hits if h.get("entity") == "drug"]
     for h in drug_hits:                       # prefer an exact (normalized) name match
-        if dbm.normalize(h.get("name", "")) == dbm.normalize(name):
+        if dbm.normalize(h.get("name", "")) == dbm.normalize(clean):
             return h["id"]
     return drug_hits[0]["id"] if len(drug_hits) == 1 else None
 
@@ -62,7 +64,8 @@ def drug_targets(chembl):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--limit", type=int, default=80, help="top-N proprietary assets to resolve")
+    ap.add_argument("--limit", type=int, default=80, help="max assets to process this run")
+    ap.add_argument("--min-trials", type=int, default=1, help="only assets in >= N trials")
     ap.add_argument("--sleep", type=float, default=0.12)
     args = ap.parse_args()
     retrieved = datetime.date.today().isoformat()
@@ -70,13 +73,16 @@ def main():
     conn = dbm.connect(DB_PATH)
     dbm.init_schema(conn, SCHEMA)
 
+    # incremental: only assets not yet resolved and not yet tried
     assets = conn.execute(
         """SELECT a.id, a.name
            FROM asset a
            JOIN edge e ON e.src_type='asset' AND e.src_id=a.id AND e.rel='tested_in'
-           WHERE a.role='proprietary'
-           GROUP BY a.id ORDER BY count(DISTINCT e.dst_id) DESC LIMIT ?;""",
-        (args.limit,),
+           WHERE a.role='proprietary' AND a.chembl_id IS NULL AND a.ot_checked IS NULL
+           GROUP BY a.id
+           HAVING count(DISTINCT e.dst_id) >= ?
+           ORDER BY count(DISTINCT e.dst_id) DESC LIMIT ?;""",
+        (args.min_trials, args.limit),
     ).fetchall()
 
     matched = n_edges = 0
@@ -84,13 +90,17 @@ def main():
         try:
             chembl = resolve_chembl(name)
             time.sleep(args.sleep)
-            if not chembl:
-                print(f"[{i}/{len(assets)}] {name}: no drug match")
-                continue
-            drug_type, targets = drug_targets(chembl)
-            time.sleep(args.sleep)
-        except Exception as e:
+            drug_type, targets = drug_targets(chembl) if chembl else (None, {})
+            if chembl:
+                time.sleep(args.sleep)
+        except Exception as e:  # leave ot_checked NULL -> retried on a later run
             print(f"[{i}/{len(assets)}] {name}: ERROR {e}")
+            continue
+
+        conn.execute("UPDATE asset SET ot_checked=? WHERE id=?", (retrieved, aid))
+        if not chembl:
+            conn.commit()
+            print(f"[{i}/{len(assets)}] {name}: no drug match")
             continue
 
         conn.execute(
@@ -109,9 +119,10 @@ def main():
         tgt = ", ".join(list(targets)[:4]) or "(no MoA targets)"
         print(f"[{i}/{len(assets)}] {name} -> {chembl} [{drug_type}] : {tgt}")
 
-    print(f"\nResolved {matched}/{len(assets)} assets; {n_edges} asset->target edges.")
+    tot_res = conn.execute("SELECT count(*) FROM asset WHERE chembl_id IS NOT NULL").fetchone()[0]
     n_t = conn.execute("SELECT count(*) FROM target").fetchone()[0]
-    print(f"targets in graph: {n_t}")
+    print(f"\nResolved {matched}/{len(assets)} new assets; {n_edges} new asset->target edges.")
+    print(f"cumulative: {tot_res} assets resolved, {n_t} targets in graph")
 
 
 if __name__ == "__main__":

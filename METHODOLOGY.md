@@ -79,6 +79,13 @@ punctuation and corporate suffixes. Fuzzy alias/ticker matching is still Phase 2
   ChEMBL ids attached — for the top proprietary assets (bounded by --limit).
 - 2026-07-07 — (Phase 3) MONDO mapping via EBI OLS4: canonical labels resolved
   to MONDO ids (precision-first — exact label/synonym match only, else left
-  unmapped), with `disease --subtype_of--> disease` hierarchy for rollup. ~60%
-  of trials covered; umbrella terms (cancer, solid tumor) and word-order/abbrev
-  noise from stage-2 canonicalization remain unmapped (a recall lever for later).
+  unmapped), with `disease --subtype_of--> disease` hierarchy for rollup.
+- 2026-07-07 — MONDO recall lifted to ~68% of trials: order- and
+  spelling-independent token matching; canonical now strips parenthetical
+  abbreviations, "or"/"and", and normalizes British spelling. Precision preserved
+  (umbrellas like "solid tumor" still left unmapped).
+- 2026-07-07 — broadened Open Targets to proprietary assets in ≥2 trials
+  (630 resolved, 476 targets, real modality). Ingest is incremental (`ot_checked`
+  skips resolved/tried) and de-parenthesizes asset names. Tubulin isoforms (TUB*)
+  are excluded from the target leaderboard only — family-inflated and
+  non-actionable; the `asset --targets--> target` edges stay in the graph.
