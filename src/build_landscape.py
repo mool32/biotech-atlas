@@ -9,7 +9,7 @@ import os
 import sqlite3
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB = os.path.join(ROOT, "data", "biotech.sqlite")
+DB = os.environ.get("ATLAS_DB", os.path.join(ROOT, "data", "biotech.sqlite"))
 OUT = os.path.join(ROOT, "landscape.html")
 
 ACCENTS = {"blue": "#4f7cc9", "teal": "#3fa39a", "amber": "#d69a3c",

@@ -56,6 +56,23 @@ Output lands in `data/biotech.sqlite`; raw API responses in `data/raw/` (the
 audit trail); the map in `landscape.html`. Use `--limit N` on ingest to pull
 only the first N seed companies.
 
+### Two graphs: curated vs census
+
+The seed pipeline above builds a **curated** graph (`data/biotech.sqlite`) — 45
+hand-picked companies, deeply enriched (targets, MONDO, parent roll-ups). To
+instead discover the **whole industry** bottom-up, invert it: walk every
+industry-led oncology trial and let the company universe fall out of the data.
+
+```bash
+# full industry census -> a separate db (curated graph untouched)
+ATLAS_DB=data/census.sqlite python3 src/ingest_all_oncology.py   # ~27k trials, ~4.3k companies
+ATLAS_DB=data/census.sqlite python3 src/resolve.py               # roles + canonical labels
+ATLAS_DB=data/census.sqlite python3 src/build_landscape.py       # census landscape
+```
+
+Every script honors `ATLAS_DB`, so the same pipeline (resolve, Open Targets,
+MONDO) can enrich the census incrementally.
+
 ## Stack
 
 - **Dev:** SQLite (stdlib, zero-install).
@@ -68,7 +85,8 @@ only the first N seed companies.
 ```
 schema.sql                     portable DDL (entities + edges + provenance)
 src/db.py                      thin DB layer + entity normalization
-src/ingest_clinicaltrials.py   stage 1 — ingest the oncology vertical
+src/ingest_clinicaltrials.py   stage 1 — ingest the oncology vertical (seed companies)
+src/ingest_all_oncology.py     census — invert the seed: all industry-led onco trials
 src/resolve.py                 stage 2 — asset role, indication canon, parent roll-up
 src/ingest_opentargets.py      stage 2b — targets + real modality (Open Targets)
 src/ingest_mondo.py            stage 2c — map indications to MONDO + hierarchy
@@ -81,10 +99,15 @@ METHODOLOGY.md                 definitions, source registry, provenance policy
 
 ## Roadmap
 
-- **Phase 1 (now):** oncology end-to-end from ClinicalTrials.gov.
-- **Phase 2:** add sources (SEC EDGAR pipelines, Open Targets targets, financings),
-  real entity resolution, 1–2 visualizations (landscape + focused graph).
-- **Phase 3:** scheduled delta refresh; expand to the next therapeutic area.
+- **Done:** oncology end-to-end (curated 45); asset roles; MONDO diseases +
+  hierarchy; Open Targets targets + modality; landscape + focused graph; full
+  industry **census** (bottom-up, ~4.3k companies / ~27k trials).
+- **Next — entity resolution at scale:** the census has ~4.3k company *names*,
+  but variants of one group are still separate (Hoffmann-La Roche / Genentech;
+  Merck Sharp & Dohme / Merck). Fuzzy + canonical-id merging is now the
+  highest-leverage work.
+- **Then:** enrich the census (targets/MONDO incrementally), add a business
+  layer (SEC EDGAR financings/M&A), scheduled delta refresh, next therapeutic area.
 
 ## Known limitations (today)
 

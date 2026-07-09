@@ -89,3 +89,10 @@ punctuation and corporate suffixes. Fuzzy alias/ticker matching is still Phase 2
   skips resolved/tried) and de-parenthesizes asset names. Tubulin isoforms (TUB*)
   are excluded from the target leaderboard only — family-inflated and
   non-actionable; the `asset --targets--> target` edges stay in the graph.
+- 2026-07-09 — (Phase 4) inverted the seed: `ingest_all_oncology.py` harvests
+  every industry-led oncology trial into a separate census db (via `ATLAS_DB`) —
+  ~27.3k trials, ~4.3k company names, ~18k assets. Scope = `leadSponsor.class ==
+  INDUSTRY` (the `funderType:industry` aggFilter also admits academic-led trials
+  with an industry collaborator, which we drop). Company entity resolution across
+  name variants (Hoffmann-La Roche / Genentech; Merck Sharp & Dohme / Merck) is
+  the known open problem — the ~4.3k count is name-level, not entity-level.
