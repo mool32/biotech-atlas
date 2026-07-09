@@ -104,6 +104,8 @@ def main():
            FROM indication i
            JOIN edge e ON e.dst_type='indication' AND e.dst_id=i.id AND e.rel='for'
            WHERE i.canonical IS NOT NULL AND i.canonical <> ''
+             AND i.canonical NOT IN (SELECT canonical FROM indication
+                                     WHERE mondo_id IS NOT NULL AND canonical IS NOT NULL)
            GROUP BY i.canonical ORDER BY trials DESC LIMIT ?;""", (args.limit,)).fetchall()
 
     mapped = edges = 0

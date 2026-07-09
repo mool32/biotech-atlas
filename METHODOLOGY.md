@@ -110,3 +110,9 @@ punctuation and corporate suffixes. Fuzzy alias/ticker matching is still Phase 2
   Targets on ≥5-trial proprietary assets (707 resolved, 519 targets, real
   modality). `build_landscape` now rolls the company panel up by `canonical_name`
   and counts trials led when no authoritative `totalCount` exists (census).
+- 2026-07-09 — extended census enrichment down the tail: Open Targets on all
+  ≥2-trial proprietary assets (2154 resolved / 882 targets — tail match rate
+  ~50% vs 74% at the head, as expected for obscure names) and MONDO +800
+  canonicals (→65% trial coverage). `ingest_mondo` is now incremental too (skips
+  already-mapped canonicals). The single-trial asset tail (~11.5k) is left by
+  design — mostly combinations / procedures / obscure codes, low yield.
