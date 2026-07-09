@@ -96,3 +96,11 @@ punctuation and corporate suffixes. Fuzzy alias/ticker matching is still Phase 2
   with an industry collaborator, which we drop). Company entity resolution across
   name variants (Hoffmann-La Roche / Genentech; Merck Sharp & Dohme / Merck) is
   the known open problem — the ~4.3k count is name-level, not entity-level.
+- 2026-07-09 — company entity resolution (`resolve_companies.py`): a curated,
+  ordered alias/subsidiary map sets `company.canonical_name` (non-destructive —
+  rollups group by it). Head resolved: Roche ← Genentech/Chugai/Hoffmann-La Roche,
+  J&J ← 30 Janssen variants, BMS ← Celgene/Juno, Pfizer ← Seagen/Array/Medivation;
+  Merck & Co (MSD) kept distinct from Merck KGaA. 4318 names → 4141 groups. The
+  map is curated (~60 groups), reviewable, and NOT exhaustive — the mid/long tail
+  merges only by legal-suffix stripping; full recall would need fuzzy clustering
+  or GLEIF/LEI ids with human review.

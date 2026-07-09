@@ -67,6 +67,7 @@ industry-led oncology trial and let the company universe fall out of the data.
 # full industry census -> a separate db (curated graph untouched)
 ATLAS_DB=data/census.sqlite python3 src/ingest_all_oncology.py   # ~27k trials, ~4.3k companies
 ATLAS_DB=data/census.sqlite python3 src/resolve.py               # roles + canonical labels
+ATLAS_DB=data/census.sqlite python3 src/resolve_companies.py     # merge company name variants
 ATLAS_DB=data/census.sqlite python3 src/build_landscape.py       # census landscape
 ```
 
@@ -88,6 +89,7 @@ src/db.py                      thin DB layer + entity normalization
 src/ingest_clinicaltrials.py   stage 1 — ingest the oncology vertical (seed companies)
 src/ingest_all_oncology.py     census — invert the seed: all industry-led onco trials
 src/resolve.py                 stage 2 — asset role, indication canon, parent roll-up
+src/resolve_companies.py       entity resolution — company name variants -> canonical group
 src/ingest_opentargets.py      stage 2b — targets + real modality (Open Targets)
 src/ingest_mondo.py            stage 2c — map indications to MONDO + hierarchy
 src/build_landscape.py         stage 3 — generate landscape.html from the graph
@@ -102,10 +104,11 @@ METHODOLOGY.md                 definitions, source registry, provenance policy
 - **Done:** oncology end-to-end (curated 45); asset roles; MONDO diseases +
   hierarchy; Open Targets targets + modality; landscape + focused graph; full
   industry **census** (bottom-up, ~4.3k companies / ~27k trials).
-- **Next — entity resolution at scale:** the census has ~4.3k company *names*,
-  but variants of one group are still separate (Hoffmann-La Roche / Genentech;
-  Merck Sharp & Dohme / Merck). Fuzzy + canonical-id merging is now the
-  highest-leverage work.
+- **Company entity resolution (head done):** a curated alias/subsidiary map
+  collapses the major groups (Roche ← Genentech/Chugai; J&J ← 30 Janssen
+  variants; Merck & Co kept distinct from Merck KGaA), fixing the leaderboard.
+  The mid/long tail still merges only by legal-suffix stripping — full recall
+  needs fuzzy clustering or GLEIF/LEI ids (with review).
 - **Then:** enrich the census (targets/MONDO incrementally), add a business
   layer (SEC EDGAR financings/M&A), scheduled delta refresh, next therapeutic area.
 

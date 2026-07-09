@@ -42,6 +42,7 @@ def connect(db_path: str) -> sqlite3.Connection:
 _MIGRATIONS = [
     ("company", "parent_name", "TEXT"),
     ("company", "parent_id", "INTEGER"),
+    ("company", "canonical_name", "TEXT"),
     ("asset", "role", "TEXT"),
     ("asset", "role_source", "TEXT"),
     ("asset", "ot_checked", "TEXT"),

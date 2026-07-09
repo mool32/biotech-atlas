@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS company (
   trials_total INTEGER,                -- authoritative onco trial count (source totalCount)
   parent_name  TEXT,                   -- declared corporate parent (from seed)
   parent_id    INTEGER,                -- resolved parent company id (stage 2)
+  canonical_name TEXT,                 -- resolved corporate group (entity resolution)
   lei          TEXT,                   -- canonical id: GLEIF        (to be filled)
   sec_cik      TEXT                    -- canonical id: SEC EDGAR    (to be filled)
 );
