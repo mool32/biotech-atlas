@@ -68,6 +68,8 @@ industry-led oncology trial and let the company universe fall out of the data.
 ATLAS_DB=data/census.sqlite python3 src/ingest_all_oncology.py   # ~27k trials, ~4.3k companies
 ATLAS_DB=data/census.sqlite python3 src/resolve.py               # roles + canonical labels
 ATLAS_DB=data/census.sqlite python3 src/resolve_companies.py     # merge company name variants
+ATLAS_DB=data/census.sqlite python3 src/ingest_mondo.py --reset --limit 400        # diseases (head)
+ATLAS_DB=data/census.sqlite python3 src/ingest_opentargets.py --min-trials 5 --limit 1000  # targets (head)
 ATLAS_DB=data/census.sqlite python3 src/build_landscape.py       # census landscape
 ```
 

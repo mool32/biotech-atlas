@@ -24,7 +24,7 @@ import db as dbm
 OT_URL = "https://api.platform.opentargets.org/api/v4/graphql"
 SOURCE = "Open Targets"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(ROOT, "data", "biotech.sqlite")
+DB_PATH = os.environ.get("ATLAS_DB", os.path.join(ROOT, "data", "biotech.sqlite"))
 SCHEMA = os.path.join(ROOT, "schema.sql")
 
 SEARCH_Q = 'query($q:String!){ search(queryString:$q, entityNames:["drug"]){ hits { id name entity } } }'

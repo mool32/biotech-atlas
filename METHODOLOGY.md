@@ -104,3 +104,9 @@ punctuation and corporate suffixes. Fuzzy alias/ticker matching is still Phase 2
   map is curated (~60 groups), reviewable, and NOT exhaustive — the mid/long tail
   merges only by legal-suffix stripping; full recall would need fuzzy clustering
   or GLEIF/LEI ids with human review.
+- 2026-07-09 — enriched the census head with the same layers (all incremental
+  via `ATLAS_DB`, so the tail extends with the same scripts): MONDO on the top
+  400 canonical indications (255 mapped → ~63% of trials covered) and Open
+  Targets on ≥5-trial proprietary assets (707 resolved, 519 targets, real
+  modality). `build_landscape` now rolls the company panel up by `canonical_name`
+  and counts trials led when no authoritative `totalCount` exists (census).

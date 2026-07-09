@@ -24,7 +24,7 @@ from resolve import disease_key
 OLS = "https://www.ebi.ac.uk/ols4/api"
 SOURCE = "MONDO (OLS)"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(ROOT, "data", "biotech.sqlite")
+DB_PATH = os.environ.get("ATLAS_DB", os.path.join(ROOT, "data", "biotech.sqlite"))
 SCHEMA = os.path.join(ROOT, "schema.sql")
 
 # ultra-generic MONDO nodes we do not roll up into (too broad to be useful)

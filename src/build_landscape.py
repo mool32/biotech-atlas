@@ -52,9 +52,14 @@ def main():
     n_tgt = q(conn, "SELECT count(*) FROM target")[0][0]
     n_dis = q(conn, "SELECT count(DISTINCT mondo_id) FROM indication WHERE mondo_id IS NOT NULL")[0][0]
 
-    orgs = q(conn, """SELECT COALESCE(p.name,c.name), SUM(c.trials_total)
-        FROM company c LEFT JOIN company p ON c.parent_id=p.id
-        GROUP BY COALESCE(p.name,c.name) ORDER BY 2 DESC LIMIT 12;""")
+    # canonical-group rollup; use authoritative totalCount when present (curated),
+    # else count distinct trials led (census).
+    orgs = q(conn, """SELECT COALESCE(c.canonical_name, p.name, c.name) AS org,
+        COALESCE(NULLIF(SUM(c.trials_total),0), count(DISTINCT e.dst_id)) AS n
+        FROM company c
+        LEFT JOIN company p ON c.parent_id=p.id
+        LEFT JOIN edge e ON e.src_type='company' AND e.src_id=c.id AND e.rel='runs'
+        GROUP BY COALESCE(c.canonical_name, p.name, c.name) ORDER BY n DESC LIMIT 12;""")
     inds = q(conn, """SELECT d.label, count(DISTINCT e.src_id)
         FROM indication i JOIN disease d ON d.mondo_id=i.mondo_id
         JOIN edge e ON e.dst_type='indication' AND e.dst_id=i.id AND e.rel='for'
@@ -88,7 +93,7 @@ def main():
         f'sample capped at 300 trials/company; org totals are authoritative</p>'
         f'<div class="tiles">{tiles}</div></header>'
         f'<div class="grid">'
-        + panel("Companies by oncology trials", "parent-rolled-up, authoritative total", orgs, ACCENTS["blue"])
+        + panel("Companies by oncology trials", "canonical group · trials led", orgs, ACCENTS["blue"])
         + panel("Most-studied diseases", "MONDO-mapped", inds, ACCENTS["teal"])
         + panel("Disease groups", "MONDO rollup via hierarchy", rollup, ACCENTS["teal"])
         + panel("Top proprietary programs", "comparators & placebo excluded", progs, ACCENTS["amber"])
