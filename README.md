@@ -76,6 +76,16 @@ ATLAS_DB=data/census.sqlite python3 src/build_landscape.py       # census landsc
 Every script honors `ATLAS_DB`, so the same pipeline (resolve, Open Targets,
 MONDO) can enrich the census incrementally.
 
+### Explore it
+
+A zero-dependency local web app (stdlib `http.server` + a single HTML page)
+serves a read-only JSON API over the graph and lets you drill down:
+company → drugs → targets → diseases, with search and a census/curated toggle.
+
+```bash
+python3 src/serve.py     # -> http://localhost:8787
+```
+
 ## Stack
 
 - **Dev:** SQLite (stdlib, zero-install).
@@ -95,6 +105,8 @@ src/resolve_companies.py       entity resolution — company name variants -> ca
 src/ingest_opentargets.py      stage 2b — targets + real modality (Open Targets)
 src/ingest_mondo.py            stage 2c — map indications to MONDO + hierarchy
 src/build_landscape.py         stage 3 — generate landscape.html from the graph
+src/serve.py                   local explorer — JSON API + web UI over the graph
+web/index.html                 explorer single-page front-end (search + drill-down)
 src/query_examples.py          read-only analytical queries
 data/seeds/                    curated seed lists (committed)
 data/raw/                      dated API snapshots (gitignored)
