@@ -66,6 +66,9 @@ const S = { db: "census" };
 const $ = (s,el=document)=>el.querySelector(s);
 const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const api = (path,p={}) => fetch(`/api/${path}?`+new URLSearchParams({db:S.db,...p})).then(r=>r.json());
+const fmtMoney = v => { const a=Math.abs(v), s=v<0?"−":"";
+  return a>=1e9?`${s}$${(a/1e9).toFixed(1)}B`:a>=1e6?`${s}$${(a/1e6).toFixed(0)}M`:`${s}$${Math.round(a)}`; };
+const FIN = {revenue:["Revenue",0], rd_expense:["R&D",1], cash:["Cash",2], net_income:["Net income",3]};
 
 // entity link helpers
 const cLink = n => `<a class="lnk" data-kind="company" data-name="${esc(n)}">${esc(n)}</a>`;
@@ -109,7 +112,11 @@ function setMain(html){ const m=$("#main"); m.dataset.loaded=1; m.innerHTML=html
 
 async function openCompany(name){
   const d = await api("company",{name});
+  const fin = (d.financials||[]).slice().sort((a,b)=>FIN[a.metric][1]-FIN[b.metric][1]);
   setMain(`<h2>${esc(name)}</h2><p class="sub">${d.trials} oncology trials led · company</p>
+    ${fin.length?`<div class="card"><h2>financials · SEC EDGAR</h2>
+      ${fin.map(f=>`<span class="pill">${FIN[f.metric][0]}: <b>${fmtMoney(f.value)}</b> <span class="muted">FY${String(f.fiscal_year).slice(2)}</span></span>`).join("")}
+      <div class="muted" style="font-size:11.5px;margin-top:6px">CIK ${esc(d.cik||"")} · latest annual XBRL filing</div></div>`:""}
     <div class="grid2">
       <div><div class="card"><h2>drugs in its trials <span style="text-transform:none;font-weight:400">(incl. combo partners)</span></h2>
         <table><thead><tr><th>drug</th><th>modality</th><th class="n">trials</th></tr></thead><tbody>
