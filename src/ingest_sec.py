@@ -32,7 +32,8 @@ FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{:010d}.json"
 METRICS = {  # us-gaap (US filers)
     "revenue": ["RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues",
                 "RevenueFromContractWithCustomerIncludingAssessedTax", "SalesRevenueNet"],
-    "rd_expense": ["ResearchAndDevelopmentExpense"],
+    "rd_expense": ["ResearchAndDevelopmentExpenseExcludingAcquiredInProcessCost",
+                   "ResearchAndDevelopmentExpense"],
     "cash": ["CashAndCashEquivalentsAtCarryingValue"],
     "net_income": ["NetIncomeLoss"],
 }
@@ -51,17 +52,23 @@ def get_json(url):
 
 
 def latest_fy(ns, tags):
-    """Latest annual value; prefer 'frame'd (consolidated) facts over segment ones."""
-    framed, plain = [], []
-    for tag in tags:
+    """Latest annual value: newest fiscal year across the candidate tags; for the
+    same year, the higher-priority tag wins (so the recurring-R&D tag beats the
+    IPR&D-only tag). Within a tag, prefer 'frame'd (consolidated) facts."""
+    best = None                                   # ((fy, -tag_index), val, fy)
+    for i, tag in enumerate(tags):
+        framed, plain = [], []
         for x in ns.get(tag, {}).get("units", {}).get("USD", []) or []:
             if x.get("fp") == "FY" and x.get("val") is not None and x.get("fy"):
                 (framed if x.get("frame") else plain).append(x)
-    pool = framed or plain
-    if not pool:
-        return None
-    b = max(pool, key=lambda x: x["fy"])
-    return {"fy": b["fy"], "val": b["val"]}
+        pool = framed or plain
+        if not pool:
+            continue
+        b = max(pool, key=lambda x: x["fy"])
+        key = (b["fy"], -i)
+        if best is None or key > best[0]:
+            best = (key, b["val"], b["fy"])
+    return {"fy": best[2], "val": best[1]} if best else None
 
 
 def main():

@@ -124,3 +124,8 @@ punctuation and corporate suffixes. Fuzzy alias/ticker matching is still Phase 2
   machine-readable us-gaap/ifrs XBRL (Sanofi, GSK, BioNTech blank); and a few
   diversified filers mis-tag R&D by segment (J&J), so R&D is reliable for pure
   biotech, spottier for big pharma. Revenue / cash / net income are solid.
+- 2026-07-09 — improved R&D extraction: prefer the recurring-R&D tag big pharma
+  splits out (`...ExcludingAcquiredInProcessCost`) and pick the newest fiscal
+  year with a tag-priority tie-break. Fixes J&J ($0.5B → $15.1B), Pfizer
+  (missing → $10.7B) and stale revenues (Amgen). Revenue / R&D / cash are now
+  reliable; net income can still lag a year for a few filers (SEC frames lag).
