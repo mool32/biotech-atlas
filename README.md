@@ -81,7 +81,9 @@ MONDO) can enrich the census incrementally.
 
 A zero-dependency local web app (stdlib `http.server` + a single HTML page)
 serves a read-only JSON API over the graph and lets you drill down:
-company → drugs → targets → diseases, with search and a census/curated toggle.
+company → drugs → targets → diseases. Search, census/curated toggle,
+back-navigation, modality filters, CSV export, SEC financials on company
+cards, and a neighborhood graph on target views.
 
 ```bash
 python3 src/serve.py     # -> http://localhost:8787

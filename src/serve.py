@@ -61,8 +61,9 @@ def ep_overview(db, _):
             FROM disease d JOIN indication i ON i.mondo_id=d.mondo_id
             JOIN edge e ON e.dst_type='indication' AND e.dst_id=i.id AND e.rel='for'
             GROUP BY d.id ORDER BY n DESC LIMIT 15"""),
-        "phases": rows(db, """SELECT COALESCE(phase,'(n/a)') AS phase, count(*) AS n
-            FROM trial GROUP BY phase ORDER BY n DESC"""),
+        "phases": rows(db, """SELECT CASE WHEN phase IS NULL OR phase='N/A'
+            THEN '(n/a)' ELSE phase END AS phase, count(*) AS n
+            FROM trial GROUP BY 1 ORDER BY n DESC"""),
     }
 
 
@@ -94,10 +95,11 @@ def ep_company(db, p):
         "name": name,
         "trials": one(db, f"""SELECT count(DISTINCT dst_id) AS n FROM edge
             WHERE rel='runs' AND src_type='company' AND src_id IN ({ph})""", ids).get("n", 0),
-        "phases": rows(db, f"""SELECT COALESCE(tr.phase,'(n/a)') AS phase, count(DISTINCT tr.id) AS n
+        "phases": rows(db, f"""SELECT CASE WHEN tr.phase IS NULL OR tr.phase='N/A'
+            THEN '(n/a)' ELSE tr.phase END AS phase, count(DISTINCT tr.id) AS n
             FROM edge re JOIN trial tr ON tr.id=re.dst_id
             WHERE re.rel='runs' AND re.src_type='company' AND re.src_id IN ({ph})
-            GROUP BY phase ORDER BY n DESC""", ids),
+            GROUP BY 1 ORDER BY n DESC""", ids),
         "assets": rows(db, f"""SELECT a.id, a.name, a.modality, count(DISTINCT te.dst_id) AS trials
             FROM edge de JOIN asset a ON a.id=de.dst_id
             LEFT JOIN edge te ON te.src_type='asset' AND te.src_id=a.id AND te.rel='tested_in'
