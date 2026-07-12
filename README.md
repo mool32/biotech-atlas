@@ -48,7 +48,8 @@ python3 src/ingest_clinicaltrials.py --max-per-company 300   # 1. ingest trials 
 python3 src/resolve.py                                       # 2. resolve/clean
 python3 src/ingest_opentargets.py --min-trials 2 --limit 900 # 3. targets + modality (incremental)
 python3 src/ingest_mondo.py --reset --limit 150              # 4. map indications to MONDO
-python3 src/build_landscape.py                               # 5. -> landscape.html
+python3 src/ingest_sec.py                                    # 5. business layer (SEC financials)
+python3 src/build_landscape.py                               # 6. -> landscape.html
 python3 src/query_examples.py                                # (optional) console views
 ```
 
@@ -104,6 +105,7 @@ src/resolve.py                 stage 2 — asset role, indication canon, parent 
 src/resolve_companies.py       entity resolution — company name variants -> canonical group
 src/ingest_opentargets.py      stage 2b — targets + real modality (Open Targets)
 src/ingest_mondo.py            stage 2c — map indications to MONDO + hierarchy
+src/ingest_sec.py              business layer — link companies to SEC EDGAR + financials
 src/build_landscape.py         stage 3 — generate landscape.html from the graph
 src/serve.py                   local explorer — JSON API + web UI over the graph
 web/index.html                 explorer single-page front-end (search + drill-down)
@@ -123,8 +125,10 @@ METHODOLOGY.md                 definitions, source registry, provenance policy
   variants; Merck & Co kept distinct from Merck KGaA), fixing the leaderboard.
   The mid/long tail still merges only by legal-suffix stripping — full recall
   needs fuzzy clustering or GLEIF/LEI ids (with review).
-- **Then:** enrich the census (targets/MONDO incrementally), add a business
-  layer (SEC EDGAR financings/M&A), scheduled delta refresh, next therapeutic area.
+- **Done since:** census enriched (targets/MONDO to the meaningful tail);
+  business layer (SEC EDGAR financials); local explorer web app.
+- **Then:** deploy the explorer (Postgres/Supabase + hosting), scheduled delta
+  refresh, tail entity resolution (GLEIF/LEI), next therapeutic area.
 
 ## Known limitations (today)
 

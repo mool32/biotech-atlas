@@ -55,6 +55,16 @@ CREATE TABLE IF NOT EXISTS target (
   uniprot_id TEXT                   -- canonical id: UniProt       (to be filled)
 );
 
+-- business layer: latest annual XBRL facts per company (keyed on SEC CIK)
+CREATE TABLE IF NOT EXISTS financials (
+  id          INTEGER PRIMARY KEY,
+  cik         TEXT NOT NULL,        -- canonical id: SEC EDGAR
+  metric      TEXT NOT NULL,        -- revenue | rd_expense | cash | net_income
+  value       REAL,
+  fiscal_year INTEGER,
+  UNIQUE (cik, metric)
+);
+
 CREATE TABLE IF NOT EXISTS trial (
   id             INTEGER PRIMARY KEY,
   nct_id         TEXT NOT NULL UNIQUE,   -- canonical id: ClinicalTrials.gov

@@ -25,7 +25,7 @@ parsing, so every loaded row can be traced back and re-derived.
 | ClinicalTrials.gov  | trials, sponsors, interventions | **live** |
 | Open Targets        | drug → target, drug type        | **live** |
 | MONDO (via EBI OLS4)| disease ontology + hierarchy    | **live** |
-| SEC EDGAR           | public companies, financials    | planned  |
+| SEC EDGAR           | public companies, financials    | **live** |
 | ChEMBL / DrugBank   | drugs / compounds               | planned  |
 | GLEIF (LEI)         | legal entity ids                | planned  |
 | Lens.org            | patents                         | planned  |
@@ -116,3 +116,11 @@ punctuation and corporate suffixes. Fuzzy alias/ticker matching is still Phase 2
   canonicals (→65% trial coverage). `ingest_mondo` is now incremental too (skips
   already-mapped canonicals). The single-trial asset tail (~11.5k) is left by
   design — mostly combinations / procedures / obscure codes, low yield.
+- 2026-07-09 — business layer (`ingest_sec.py`): companies linked to SEC EDGAR
+  by ticker (through the same `canonical()` resolver, so it works on both dbs),
+  latest-annual XBRL facts stored per CIK (revenue, R&D, cash, net income),
+  surfaced in the explorer. ~31 groups linked. Honest gaps: private / foreign
+  unlisted companies don't file (blank); some foreign filers submit no
+  machine-readable us-gaap/ifrs XBRL (Sanofi, GSK, BioNTech blank); and a few
+  diversified filers mis-tag R&D by segment (J&J), so R&D is reliable for pure
+  biotech, spottier for big pharma. Revenue / cash / net income are solid.

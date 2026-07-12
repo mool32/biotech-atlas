@@ -117,6 +117,10 @@ def ep_company(db, p):
             JOIN indication i ON i.id=fe.dst_id JOIN disease d ON d.mondo_id=i.mondo_id
             WHERE re.rel='runs' AND re.src_type='company' AND re.src_id IN ({ph})
             GROUP BY d.id ORDER BY trials DESC LIMIT 12""", ids),
+        "cik": (one(db, f"SELECT sec_cik AS cik FROM company WHERE id IN ({ph}) "
+                    "AND sec_cik IS NOT NULL LIMIT 1", ids) or {}).get("cik"),
+        "financials": rows(db, f"""SELECT DISTINCT f.metric, f.value, f.fiscal_year
+            FROM company c JOIN financials f ON f.cik=c.sec_cik WHERE c.id IN ({ph})""", ids),
     }
 
 
