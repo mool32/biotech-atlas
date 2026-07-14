@@ -53,13 +53,14 @@ def main():
     n_dis = q(conn, "SELECT count(DISTINCT mondo_id) FROM indication WHERE mondo_id IS NOT NULL")[0][0]
 
     # canonical-group rollup; use authoritative totalCount when present (curated),
-    # else count distinct trials led (census).
-    orgs = q(conn, """SELECT COALESCE(c.canonical_name, p.name, c.name) AS org,
-        COALESCE(NULLIF(SUM(c.trials_total),0), count(DISTINCT e.dst_id)) AS n
-        FROM company c
-        LEFT JOIN company p ON c.parent_id=p.id
-        LEFT JOIN edge e ON e.src_type='company' AND e.src_id=c.id AND e.rel='runs'
-        GROUP BY COALESCE(c.canonical_name, p.name, c.name) ORDER BY n DESC LIMIT 12;""")
+    # else count distinct trials led (census). SUM and COUNT are computed in
+    # separate CTEs so the edge join doesn't fan out (multiply) trials_total.
+    orgs = q(conn, """WITH grp AS (SELECT c.id, COALESCE(c.canonical_name,c.name) AS org, c.trials_total FROM company c),
+        tt AS (SELECT org, SUM(trials_total) AS s FROM grp GROUP BY org),
+        ct AS (SELECT g.org, count(DISTINCT e.dst_id) AS n FROM grp g
+               JOIN edge e ON e.src_type='company' AND e.src_id=g.id AND e.rel='runs' GROUP BY g.org)
+        SELECT tt.org AS org, COALESCE(NULLIF(tt.s,0), ct.n, 0) AS n
+        FROM tt LEFT JOIN ct ON ct.org=tt.org ORDER BY n DESC LIMIT 12;""")
     inds = q(conn, """SELECT d.label, count(DISTINCT e.src_id)
         FROM indication i JOIN disease d ON d.mondo_id=i.mondo_id
         JOIN edge e ON e.dst_type='indication' AND e.dst_id=i.id AND e.rel='for'

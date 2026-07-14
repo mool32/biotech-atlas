@@ -49,11 +49,12 @@ def ep_overview(db, _):
             (SELECT count(*) FROM asset WHERE role='proprietary') AS assets,
             (SELECT count(*) FROM target) AS targets,
             (SELECT count(*) FROM disease) AS diseases"""),
-        "companies": rows(db, f"""SELECT {ORG} AS org,
-            COALESCE(NULLIF(SUM(c.trials_total),0), count(DISTINCT e.dst_id)) AS n
-            FROM company c
-            LEFT JOIN edge e ON e.src_type='company' AND e.src_id=c.id AND e.rel='runs'
-            GROUP BY {ORG} ORDER BY n DESC LIMIT 15"""),
+        "companies": rows(db, f"""WITH grp AS (SELECT c.id, {ORG} AS org, c.trials_total FROM company c),
+            tt AS (SELECT org, SUM(trials_total) AS s FROM grp GROUP BY org),
+            ct AS (SELECT g.org, count(DISTINCT e.dst_id) AS n FROM grp g
+                   JOIN edge e ON e.src_type='company' AND e.src_id=g.id AND e.rel='runs' GROUP BY g.org)
+            SELECT tt.org AS org, COALESCE(NULLIF(tt.s,0), ct.n, 0) AS n
+            FROM tt LEFT JOIN ct ON ct.org=tt.org ORDER BY n DESC LIMIT 15"""),
         "targets": rows(db, """SELECT t.id, t.name, count(DISTINCT e.src_id) AS n
             FROM target t JOIN edge e ON e.dst_type='target' AND e.dst_id=t.id AND e.rel='targets'
             WHERE t.name NOT LIKE 'TUB%' GROUP BY t.id ORDER BY n DESC LIMIT 15"""),

@@ -3,6 +3,7 @@ data/*.sqlite
 data/*.sqlite-*
 data/raw/
 landscape.html
+web/db/*.sqlite
 # python
 .venv/
 __pycache__/

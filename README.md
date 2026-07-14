@@ -79,15 +79,35 @@ MONDO) can enrich the census incrementally.
 
 ### Explore it
 
-A zero-dependency local web app (stdlib `http.server` + a single HTML page)
-serves a read-only JSON API over the graph and lets you drill down:
-company → drugs → targets → diseases. Search, census/curated toggle,
-back-navigation, modality filters, CSV export, SEC financials on company
-cards, and a neighborhood graph on target views.
+`web/` is a self-contained static explorer — one HTML page that runs the whole
+graph **in the browser** via SQLite-on-WASM (`sql.js`), no backend. Drill down
+company → drugs → targets → diseases, with search, census/curated toggle,
+back-navigation, modality filters, CSV export, SEC financials, and a target
+neighborhood graph.
 
 ```bash
-python3 src/serve.py     # -> http://localhost:8787
+python3 src/build_web.py                # stage the dbs into web/db/
+python3 -m http.server -d web 8080      # preview -> http://localhost:8080
 ```
+
+(`src/serve.py` is an alternative — the same views over a tiny stdlib JSON API,
+handy for local dev against fresh data: `python3 src/serve.py`.)
+
+### Deploy (static, free)
+
+Read-only over fully public data → deploys as pure static files, no server:
+
+1. `python3 src/build_web.py` — stages `web/db/curated.sqlite` (16 MB) and
+   `census.sqlite` (56 MB).
+2. Upload the `web/` folder to a static host:
+   - **GitHub Pages** — handles both dbs (100 MB/file limit). Recommended.
+   - **Cloudflare Pages / Netlify** — 25 MB/file limit: curated deploys fine;
+     for census, host `census.sqlite` on R2/external and point the fetch at it,
+     or chunk it with `sql.js-httpvfs`.
+
+The whole map becomes a shareable link — the db downloads once (then cached),
+queries run client-side. Moving `sql.js` into a Web Worker (or `sql.js-httpvfs`
+for page-level range loading) keeps census silky — a noted next step.
 
 ## Stack
 
@@ -109,8 +129,10 @@ src/ingest_opentargets.py      stage 2b — targets + real modality (Open Target
 src/ingest_mondo.py            stage 2c — map indications to MONDO + hierarchy
 src/ingest_sec.py              business layer — link companies to SEC EDGAR + financials
 src/build_landscape.py         stage 3 — generate landscape.html from the graph
-src/serve.py                   local explorer — JSON API + web UI over the graph
-web/index.html                 explorer single-page front-end (search + drill-down)
+src/serve.py                   optional stdlib JSON API (dev alternative to static)
+src/build_web.py               stage graph dbs into web/db/ for the static deploy
+web/index.html                 static explorer — runs SQLite in the browser (sql.js)
+web/vendor/                    vendored sql.js (WASM); web/db/ = staged dbs (gitignored)
 src/query_examples.py          read-only analytical queries
 data/seeds/                    curated seed lists (committed)
 data/raw/                      dated API snapshots (gitignored)
