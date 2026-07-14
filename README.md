@@ -4,7 +4,10 @@ An objective, source-anchored map of the biotech industry, built as a knowledge
 graph. Research-first, but product-ready: everything is built on **open sources**
 so it can grow into a public/commercial resource without licensing walls.
 
-Currently scoped to **vertical 1: oncology**, source **1: ClinicalTrials.gov**.
+Currently scoped to **oncology**; live sources: ClinicalTrials.gov, Open Targets,
+MONDO, SEC EDGAR.
+
+**🔎 Live explorer → https://mool32.github.io/biotech-atlas/**
 
 ## The one rule (this is what "objective" means here)
 
@@ -95,19 +98,25 @@ handy for local dev against fresh data: `python3 src/serve.py`.)
 
 ### Deploy (static, free)
 
-Read-only over fully public data → deploys as pure static files, no server:
+**Live: https://mool32.github.io/biotech-atlas/**
 
-1. `python3 src/build_web.py` — stages `web/db/curated.sqlite` (16 MB) and
-   `census.sqlite` (56 MB).
-2. Upload the `web/` folder to a static host:
-   - **GitHub Pages** — handles both dbs (100 MB/file limit). Recommended.
-   - **Cloudflare Pages / Netlify** — 25 MB/file limit: curated deploys fine;
-     for census, host `census.sqlite` on R2/external and point the fetch at it,
-     or chunk it with `sql.js-httpvfs`.
+Read-only over fully public data → pure static files, no server. Deployed on
+GitHub Pages from the `gh-pages` branch (whose root is the contents of `web/`):
 
-The whole map becomes a shareable link — the db downloads once (then cached),
-queries run client-side. Moving `sql.js` into a Web Worker (or `sql.js-httpvfs`
-for page-level range loading) keeps census silky — a noted next step.
+```bash
+python3 src/build_web.py                              # stage web/db/{curated,census}.sqlite
+git add -f web/db/*.sqlite && git commit -m publish   # dbs are gitignored otherwise
+git branch -D gh-pages 2>/dev/null; \
+  git subtree split --prefix=web -b gh-pages           # gh-pages root = web/ contents
+git push -f origin gh-pages                            # Pages redeploys
+```
+
+`.nojekyll` stops GitHub processing `vendor/` and `db/`. Both dbs serve fast
+(curated 16 MB ~2 s, census 56 MB ~10 s), then queries run client-side. (Right
+after a deploy a large file can cold-serve slowly for a minute while the CDN
+warms; fast once cached.) Alternatives: Cloudflare Pages (25 MB/file → curated
+only) or `sql.js-httpvfs` for page-level range loading. Moving `sql.js` into a
+Web Worker keeps the UI silky while census loads — a noted next step.
 
 ## Stack
 
