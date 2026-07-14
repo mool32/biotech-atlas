@@ -62,14 +62,15 @@ td .n,td.n{color:var(--muted);font-variant-numeric:tabular-nums}
 .gnode{cursor:pointer}
 .gnode:hover text{fill:var(--accent)}
 </style>
+<script src="vendor/sql-wasm.js"></script>
 </head>
 <body>
 <header>
   <h1>biotech-atlas <span>explorer</span></h1>
   <button id="back" class="backbtn" style="display:none">← back</button>
   <div class="toggle" id="dbtoggle">
-    <button data-db="census" class="on">census · industry</button>
-    <button data-db="curated">curated · 45</button>
+    <button data-db="curated" class="on">curated · 45</button>
+    <button data-db="census">census · industry</button>
   </div>
   <input id="search" placeholder="search companies, drugs, targets, diseases…" autocomplete="off">
 </header>
@@ -78,10 +79,108 @@ td .n,td.n{color:var(--muted);font-variant-numeric:tabular-nums}
   <main id="main" class="card detail"><p class="hint">Loading…</p></main>
 </div>
 <script>
-const S = { db:"census", hist:[], cur:null, company:null, cmod:null, phases:[] };
+const S = { db:"curated", hist:[], cur:null, company:null, cmod:null, phases:[] };
 const $ = (s,el=document)=>el.querySelector(s);
 const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const api = (p,q={}) => fetch(`/api/${p}?`+new URLSearchParams({db:S.db,...q})).then(r=>r.json());
+// ---- data layer: SQLite runs in the browser (sql.js) — no backend ----
+let DB=null; const DBCACHE={}; let SQLREADY=null;
+async function loadDB(name){
+  if(DBCACHE[name]){ DB=DBCACHE[name]; return; }
+  SQLREADY = SQLREADY || initSqlJs({locateFile:f=>"vendor/"+f});
+  const SQL = await SQLREADY;
+  const buf = await fetch(`db/${name}.sqlite`).then(r=>{ if(!r.ok) throw new Error("db "+r.status); return r.arrayBuffer(); });
+  DBCACHE[name] = new SQL.Database(new Uint8Array(buf)); DB = DBCACHE[name];
+}
+function dq(sql,params=[]){ const s=DB.prepare(sql); s.bind(params); const o=[]; while(s.step()) o.push(s.getAsObject()); s.free(); return o; }
+function d1(sql,params=[]){ return dq(sql,params)[0]||{}; }
+const ORG = "COALESCE(c.canonical_name, c.name)";
+const EP = {
+  overview(){ return {
+    counts: d1(`SELECT
+      (SELECT count(DISTINCT COALESCE(canonical_name,name)) FROM company) AS companies,
+      (SELECT count(*) FROM trial) AS trials,
+      (SELECT count(*) FROM asset WHERE role='proprietary') AS assets,
+      (SELECT count(*) FROM target) AS targets,
+      (SELECT count(*) FROM disease) AS diseases`),
+    companies: dq(`WITH grp AS (SELECT c.id, ${ORG} AS org, c.trials_total FROM company c),
+      tt AS (SELECT org, SUM(trials_total) AS s FROM grp GROUP BY org),
+      ct AS (SELECT g.org, count(DISTINCT e.dst_id) AS n FROM grp g
+             JOIN edge e ON e.src_type='company' AND e.src_id=g.id AND e.rel='runs' GROUP BY g.org)
+      SELECT tt.org AS org, COALESCE(NULLIF(tt.s,0), ct.n, 0) AS n
+      FROM tt LEFT JOIN ct ON ct.org=tt.org ORDER BY n DESC LIMIT 15`),
+    targets: dq(`SELECT t.id,t.name,count(DISTINCT e.src_id) AS n FROM target t
+      JOIN edge e ON e.dst_type='target' AND e.dst_id=t.id AND e.rel='targets'
+      WHERE t.name NOT LIKE 'TUB%' GROUP BY t.id ORDER BY n DESC LIMIT 15`),
+    diseases: dq(`SELECT d.id,d.label,count(DISTINCT e.src_id) AS n FROM disease d
+      JOIN indication i ON i.mondo_id=d.mondo_id
+      JOIN edge e ON e.dst_type='indication' AND e.dst_id=i.id AND e.rel='for'
+      GROUP BY d.id ORDER BY n DESC LIMIT 15`),
+    phases: dq(`SELECT CASE WHEN phase IS NULL OR phase='N/A' THEN '(n/a)' ELSE phase END AS phase,
+      count(*) AS n FROM trial GROUP BY 1 ORDER BY n DESC`),
+  }; },
+  search(p){ const k=`%${(p.q||"").trim()}%`; if(k==="%%") return {companies:[],assets:[],targets:[],diseases:[]};
+    return {
+      companies: dq(`SELECT DISTINCT ${ORG} AS org FROM company c WHERE c.name LIKE ? OR c.canonical_name LIKE ? ORDER BY org LIMIT 8`,[k,k]),
+      assets: dq(`SELECT id,name,modality FROM asset WHERE role='proprietary' AND name LIKE ? ORDER BY length(name) LIMIT 8`,[k]),
+      targets: dq(`SELECT id,name FROM target WHERE name LIKE ? ORDER BY length(name) LIMIT 8`,[k]),
+      diseases: dq(`SELECT id,label FROM disease WHERE label LIKE ? ORDER BY length(label) LIMIT 8`,[k]),
+    }; },
+  company(p){ const name=p.name;
+    const ids=dq(`SELECT id FROM company c WHERE ${ORG}=?`,[name]).map(r=>r.id);
+    if(!ids.length) return {name,trials:0,phases:[],assets:[],targets:[],diseases:[],financials:[]};
+    const ph=ids.map(()=>"?").join(",");
+    return {
+      name,
+      trials: d1(`SELECT count(DISTINCT dst_id) AS n FROM edge WHERE rel='runs' AND src_type='company' AND src_id IN (${ph})`,ids).n||0,
+      phases: dq(`SELECT CASE WHEN tr.phase IS NULL OR tr.phase='N/A' THEN '(n/a)' ELSE tr.phase END AS phase, count(DISTINCT tr.id) AS n
+        FROM edge re JOIN trial tr ON tr.id=re.dst_id WHERE re.rel='runs' AND re.src_type='company' AND re.src_id IN (${ph}) GROUP BY 1 ORDER BY n DESC`,ids),
+      assets: dq(`SELECT a.id,a.name,a.modality,count(DISTINCT te.dst_id) AS trials
+        FROM edge de JOIN asset a ON a.id=de.dst_id
+        LEFT JOIN edge te ON te.src_type='asset' AND te.src_id=a.id AND te.rel='tested_in'
+        WHERE de.rel='develops' AND de.src_type='company' AND de.src_id IN (${ph}) AND a.role='proprietary'
+        GROUP BY a.id ORDER BY trials DESC LIMIT 25`,ids),
+      targets: dq(`SELECT t.id,t.name,count(DISTINCT a.id) AS assets
+        FROM edge de JOIN asset a ON a.id=de.dst_id
+        JOIN edge tge ON tge.src_type='asset' AND tge.src_id=a.id AND tge.rel='targets'
+        JOIN target t ON t.id=tge.dst_id
+        WHERE de.rel='develops' AND de.src_type='company' AND de.src_id IN (${ph}) AND t.name NOT LIKE 'TUB%'
+        GROUP BY t.id ORDER BY assets DESC LIMIT 12`,ids),
+      diseases: dq(`SELECT d.id,d.label,count(DISTINCT tr.id) AS trials
+        FROM edge re JOIN trial tr ON tr.id=re.dst_id
+        JOIN edge fe ON fe.src_type='trial' AND fe.src_id=tr.id AND fe.rel='for'
+        JOIN indication i ON i.id=fe.dst_id JOIN disease d ON d.mondo_id=i.mondo_id
+        WHERE re.rel='runs' AND re.src_type='company' AND re.src_id IN (${ph}) GROUP BY d.id ORDER BY trials DESC LIMIT 12`,ids),
+      cik: d1(`SELECT sec_cik AS cik FROM company WHERE id IN (${ph}) AND sec_cik IS NOT NULL LIMIT 1`,ids).cik||null,
+      financials: dq(`SELECT DISTINCT f.metric,f.value,f.fiscal_year FROM company c JOIN financials f ON f.cik=c.sec_cik WHERE c.id IN (${ph})`,ids),
+    }; },
+  target(p){ const t=d1(`SELECT id,name,ensembl_id FROM target WHERE id=?`,[p.id]);
+    t.assets=dq(`SELECT a.id,a.name,a.modality,
+      (SELECT ${ORG} FROM company c JOIN edge de ON de.src_type='company' AND de.src_id=c.id AND de.rel='develops' WHERE de.dst_id=a.id LIMIT 1) AS company
+      FROM edge e JOIN asset a ON a.id=e.src_id WHERE e.dst_type='target' AND e.dst_id=? AND e.rel='targets' ORDER BY a.name LIMIT 60`,[p.id]);
+    return t; },
+  disease(p){ const d=d1(`SELECT id,label,mondo_id FROM disease WHERE id=?`,[p.id]);
+    d.companies=dq(`SELECT ${ORG} AS org,count(DISTINCT tr.id) AS n
+      FROM disease d JOIN indication i ON i.mondo_id=d.mondo_id
+      JOIN edge fe ON fe.dst_type='indication' AND fe.dst_id=i.id AND fe.rel='for'
+      JOIN trial tr ON tr.id=fe.src_id
+      JOIN edge re ON re.dst_type='trial' AND re.dst_id=tr.id AND re.rel='runs'
+      JOIN company c ON c.id=re.src_id WHERE d.id=? GROUP BY org ORDER BY n DESC LIMIT 12`,[p.id]);
+    d.assets=dq(`SELECT a.id,a.name,count(DISTINCT tr.id) AS n
+      FROM disease d JOIN indication i ON i.mondo_id=d.mondo_id
+      JOIN edge fe ON fe.dst_type='indication' AND fe.dst_id=i.id AND fe.rel='for'
+      JOIN trial tr ON tr.id=fe.src_id
+      JOIN edge te ON te.dst_type='trial' AND te.dst_id=tr.id AND te.rel='tested_in'
+      JOIN asset a ON a.id=te.src_id WHERE d.id=? AND a.role='proprietary' GROUP BY a.id ORDER BY n DESC LIMIT 20`,[p.id]);
+    return d; },
+  asset(p){ const a=d1(`SELECT id,name,modality,modality_source,role,chembl_id FROM asset WHERE id=?`,[p.id]);
+    a.targets=dq(`SELECT t.id,t.name FROM edge e JOIN target t ON t.id=e.dst_id WHERE e.src_type='asset' AND e.src_id=? AND e.rel='targets'`,[p.id]);
+    a.companies=dq(`SELECT DISTINCT ${ORG} AS org FROM edge de JOIN company c ON c.id=de.src_id WHERE de.rel='develops' AND de.dst_type='asset' AND de.dst_id=? LIMIT 8`,[p.id]);
+    a.indications=dq(`SELECT DISTINCT COALESCE(i.canonical,i.name) AS ind FROM edge e JOIN indication i ON i.id=e.dst_id WHERE e.src_type='asset' AND e.src_id=? AND e.rel='treats' LIMIT 12`,[p.id]);
+    a.trials=d1(`SELECT count(DISTINCT dst_id) AS n FROM edge WHERE src_type='asset' AND src_id=? AND rel='tested_in'`,[p.id]).n||0;
+    return a; },
+};
+const api = (path,params={}) => { try { return Promise.resolve(EP[path](params)); }
+  catch(e){ console.error(e); return Promise.resolve({}); } };
 const fmtMoney = v => { const a=Math.abs(v), s=v<0?"−":"";
   return a>=1e9?`${s}$${(a/1e9).toFixed(1)}B`:a>=1e6?`${s}$${(a/1e6).toFixed(0)}M`:`${s}$${Math.round(a)}`; };
 const FIN = {revenue:["Revenue",0], rd_expense:["R&D",1], cash:["Cash",2], net_income:["Net income",3]};
@@ -234,18 +333,22 @@ document.addEventListener("click", e=>{
   go({t:a.dataset.kind, id:a.dataset.id, name:a.dataset.name});
 });
 $("#back").addEventListener("click", back);
-$("#dbtoggle").addEventListener("click", e=>{
-  const b=e.target.closest("button"); if(!b) return;
+$("#dbtoggle").addEventListener("click", async e=>{
+  const b=e.target.closest("button"); if(!b || b.dataset.db===S.db) return;
   S.db=b.dataset.db; S.hist=[]; S.cur=null;
   [...$("#dbtoggle").children].forEach(x=>x.classList.toggle("on",x===b));
-  $("#main").dataset.loaded=""; showBack(); loadSide();
+  $("#main").dataset.loaded=""; showBack();
+  $("#side").innerHTML=""; $("#main").innerHTML=`<p class="hint">loading ${esc(S.db)} database${S.db==="census"?" (~56 MB, first time only)":""}…</p>`;
+  try{ await loadDB(S.db); loadSide(); }
+  catch(err){ $("#main").innerHTML='<p class="hint">could not load '+esc(S.db)+' database</p>'; }
 });
 let tm; $("#search").addEventListener("input", e=>{ clearTimeout(tm); const q=e.target.value;
   tm=setTimeout(()=>{ if(q.trim()) go({t:"search",q}); }, 250); });
 $("#search").addEventListener("keydown", e=>{ if(e.key==="Enter"){ clearTimeout(tm);
   const q=e.target.value; if(q.trim()) go({t:"search",q}); } });
 
-loadSide();
+(async()=>{ try{ await loadDB(S.db); loadSide(); }
+  catch(e){ $("#main").innerHTML='<p class="hint">failed to load database: '+esc(e.message)+'</p>'; } })();
 </script>
 </body>
 </html>
